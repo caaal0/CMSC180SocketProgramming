@@ -309,6 +309,8 @@ int main(){
         }
         printf("Socket created successfully\n");
         // Initialize the server address by the port and IP:
+        // get own ip address then use it as parameters in server
+        // check link: https://man7.org/linux/man-pages/man3/getifaddrs.3.html
         server_addr.sin_family = AF_INET;
         server_addr.sin_port = htons(ports_slaves[0]);
         server_addr.sin_addr.s_addr = inet_addr(addr_slaves[0]);
