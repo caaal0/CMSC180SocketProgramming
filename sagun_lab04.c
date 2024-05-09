@@ -273,10 +273,10 @@ int main(){
         int numSlaves;
         fscanf(config, "%d", &numSlaves);
         //the first address is always the master
-        char addr_master[32];
+        char *addr_master = (char *)malloc(16 * sizeof(char));
         int port_master;
         fscanf(config, "%s %d", addr_master, &port_master);
-        printf("Master: %s\n", addr_master);
+        printf("Master: %s %d\n", addr_master, port_master);
         //read the ip addr and port number for each slave
         char **addr_slaves = (char **)malloc(numSlaves * sizeof(char*));
         for(int i=0;i<numSlaves;i++)
