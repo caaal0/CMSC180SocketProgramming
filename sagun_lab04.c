@@ -163,31 +163,40 @@ int main(){
         ////////////////////////////
         // FOR TESTING IN SAME PC //
         ////////////////////////////
+
         //check config file for number of slaves
         FILE *config = fopen("sagun_config.txt", "r");
         //read how many slaves are there
         int numSlaves;
-        //store the first line as the master
-        char *master = (char *)malloc(16 * sizeof(char));
-        fscanf(config, "%s", master);
-        printf("Master: %s\n", master);
+        //store the first line as the number of slaves
         fscanf(config, "%d", &numSlaves);
         printf("Number of slaves: %d\n", numSlaves);
-        //read the port number for each slave
-        int *ports = (int *)malloc(numSlaves * sizeof(int));
+        //set the first address as the master always
+        char *addr_master = (char *)malloc(16 * sizeof(char));
+        int port_master;
+        fscanf(config, "%s %d", addr_master, &port_master);
+        printf("Master: %s\n", addr_master);
+        //read the ip addr and port number for each slave
+        char **addr_slaves = (char **)malloc(numSlaves * sizeof(char*));
+        for(int i=0;i<numSlaves;i++)
+        {
+            addr_slaves[i] = (char *)malloc(16 * sizeof(char));
+        }
+        int *ports_slaves = (int *)malloc(numSlaves * sizeof(int));
         for (int i = 0; i < numSlaves; i++)
         {
-            fscanf(config, "%d", &ports[i]);
+            fscanf(config, "%s %d",addr_slaves[i], &ports_slaves[i]);
+        }
+        printf("address and port of slaves:\n");
+        for (int i = 0; i < numSlaves; i++)
+        {
+            printf("Slave %d: %s %d\n",i+1,addr_slaves[i],ports_slaves[i]);
         }
 
         //divide the submatrix into number of slaves
         int ***submatrices = divide_matrix(X, n, n, numSlaves);
         printf("Matrix divided\n");
-        printf("address and port of slaves:\n");
-        for (int i = 0; i < numSlaves; i++)
-        {
-            printf("Slave %d: %d\n",i+1,ports[i]);
-        }
+        
         srand(time(NULL));
         clock_t start = clock();
         //open port p, distribute the submatrices to slaves
@@ -213,8 +222,8 @@ int main(){
             printf("Socket created successfully\n");
             // Set port and IP the same as server-side:
             server_addr.sin_family = AF_INET;
-            server_addr.sin_port = htons(ports[i]);
-            server_addr.sin_addr.s_addr = inet_addr(master);
+            server_addr.sin_port = htons(ports_slaves[i]);
+            server_addr.sin_addr.s_addr = inet_addr(addr_slaves[i]);
             
             // Send a connection request to the server, which is waiting at accept():
             if(connect(socket_desc, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0){
@@ -260,24 +269,30 @@ int main(){
         //slave - server
         printf("Slave\n");
         //read from the file the first line (ip address of the master)
-        FILE *config = fopen("config.txt", "r");
-        char master[32];
-        fscanf(config, "%s", master);
-        printf("Master: %s\n", master);
-        //read the number of slaves
+        FILE *config = fopen("sagun_config.txt", "r");
         int numSlaves;
         fscanf(config, "%d", &numSlaves);
-        //read the port number for each slave
-        int *ports = (int *)malloc(numSlaves * sizeof(int));
+        //the first address is always the master
+        char addr_master[32];
+        int port_master;
+        fscanf(config, "%s %d", addr_master, &port_master);
+        printf("Master: %s\n", addr_master);
+        //read the ip addr and port number for each slave
+        char **addr_slaves = (char **)malloc(numSlaves * sizeof(char*));
+        for(int i=0;i<numSlaves;i++)
+        {
+            addr_slaves[i] = (char *)malloc(16 * sizeof(char));
+        }
+        int *ports_slaves = (int *)malloc(numSlaves * sizeof(int));
         for (int i = 0; i < numSlaves; i++)
         {
-            fscanf(config, "%d", &ports[i]);
+            fscanf(config, "%s %d",addr_slaves[i], &ports_slaves[i]);
         }
         //ask the slave number of this instance
-        int slaveNum;
-        printf("Enter the slave number of this instance: ");
-        scanf("%d", &slaveNum);
-        printf("Slave %d's port: %d\n", slaveNum, ports[slaveNum]);
+        // int slaveNum;
+        // printf("Enter the slave number of this instance: ");
+        // scanf("%d", &slaveNum);
+        // printf("Slave %d's port: %d\n", slaveNum, ports[slaveNum]);
         //socket details declaration
         int socket_desc, client_sock, client_size;
         struct sockaddr_in server_addr, client_addr;
@@ -295,8 +310,8 @@ int main(){
         printf("Socket created successfully\n");
         // Initialize the server address by the port and IP:
         server_addr.sin_family = AF_INET;
-        server_addr.sin_port = htons(ports[slaveNum]);
-        server_addr.sin_addr.s_addr = inet_addr(master);
+        server_addr.sin_port = htons(port_master);
+        server_addr.sin_addr.s_addr = inet_addr(addr_master);
         
         // Bind the socket descriptor to the server address (the port and IP):
         if(bind(socket_desc, (struct sockaddr*)&server_addr, sizeof(server_addr))<0){
@@ -323,6 +338,7 @@ int main(){
             printf("Can't accept\n");
             return -1;
         }
+        printf("client connected at ip: %s and port %i\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
         //start time when connected
         srand(time(NULL));
         clock_t start = clock();
