@@ -226,8 +226,14 @@ int main(){
             // Send the message to server:
             struct message_data *submatrix = (struct message_data *)malloc(sizeof(struct message_data));
             submatrix->matrix = submatrices[i];
+            // for(int j = 0;j<n;j++){
+            //     for(int k=0;k<numSlaves;k++){
+            //         printf("%d ", submatrix->matrix[j][k]);
+            //     }
+            //     printf("\n");
+            // }
             submatrix->rows = n;
-            submatrix->cols = numSlaves;
+            submatrix->cols = n/numSlaves;
             if(send(socket_desc, submatrix, sizeof(struct message_data), 0) < 0){
                 printf("Unable to send message\n");
                 return -1;
@@ -317,7 +323,6 @@ int main(){
             printf("Can't accept\n");
             return -1;
         }
-        // printf("Client connected at IP: %s and port: %i\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
         //start time when connected
         srand(time(NULL));
         clock_t start = clock();
@@ -336,15 +341,15 @@ int main(){
         printf("number of rows: %d\n", submatrix->rows);
         printf("number of cols: %d\n", submatrix->cols);
         //print the contents of the matrix from the struct data
-        printf("Matrix received:\n");
-        for (int i = 0; i < submatrix->rows; i++)
-        {
-            for (int j = 0; j < submatrix->cols; j++)
-            {
-                printf("%d ", submatrix->matrix[i][j]);
-            }
-            printf("\n");
-        }
+        // printf("Matrix received:\n");
+        // for (int i = 0; i < submatrix->rows; i++)
+        // {
+        //     for (int j = 0; j < submatrix->cols; j++)
+        //     {
+        //         printf("%d ", submatrix->matrix[i][j]);
+        //     }
+        //     printf("\n");
+        // }
         
         // Respond to client:
         strcpy(server_message, "ack\n");
