@@ -164,7 +164,7 @@ int main(){
         // FOR TESTING IN SAME PC //
         ////////////////////////////
         //check config file for number of slaves
-        FILE *config = fopen("config.txt", "r");
+        FILE *config = fopen("sagun_config.txt", "r");
         //read how many slaves are there
         int numSlaves;
         //store the first line as the master
