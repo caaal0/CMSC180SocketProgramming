@@ -250,6 +250,8 @@ int main(){
                 return -1;
             }
             printf("Connected with server successfully\n");
+            char matrix[30000];
+            serialize_matrix(submatrices[i], n, n/numSlaves, matrix);
             
             // Send the message to server:
             struct message_data *submatrix = (struct message_data *)malloc(sizeof(struct message_data));
