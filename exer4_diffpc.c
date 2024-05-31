@@ -8,9 +8,11 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <sched.h>
 
-
-pthread_t tid;
+// pthread_t tid;
+// r will hold the coefficients
+int *r = (int *)malloc(n * sizeof(int));
 
 struct matrix_data
 {
@@ -30,9 +32,11 @@ struct thread_args
     int **matrix;
     int rows;
     int cols;
+    char *slave_address;
     int port;
     char *master_address;
     int *r;
+    int starting_index;
 };
 
 struct matrix_details
@@ -143,6 +147,7 @@ void *sendMatrix(void *args){
     int cols = my_data->cols;
     int port = my_data->port;
     char *master_address = my_data->master_address;
+    char *slave_address = my_data->slave_address;
     //for serializing
     int buffer[rows*cols];
     // Serialize the 2D array into a 1D buffer
@@ -173,7 +178,7 @@ void *sendMatrix(void *args){
     // Set port and IP the same as server-side:
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
-    server_addr.sin_addr.s_addr = inet_addr(master_address);
+    server_addr.sin_addr.s_addr = inet_addr(slave_address);
     
     // Send a connection request to the server, which is waiting at accept():
     if(connect(socket_desc, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0){
@@ -218,19 +223,33 @@ int main(){
     printf("Enter status of this instance (0 = master, 1 = slave): ");
     scanf("%d", &s);
 
-    FILE *config = fopen("config.txt", "r");
-    //the first address is always the master
-    char *addr_master = (char *)malloc(16 * sizeof(char));
-    fscanf(config, "%s", addr_master);
-    printf("Master: %s\n", addr_master);
+    //check config file for number of slaves
+    FILE *config = fopen("sagun_config.txt", "r");
+    //read how many slaves are there
     int numSlaves;
-    //then the number of slave ports (for same pc instances)
+    //store the first line as the number of slaves
     fscanf(config, "%d", &numSlaves);
-    //then the ports themselves
-    int port_slaves[numSlaves];
-    for(int i = 0; i<numSlaves;i++){
-        fscanf(config, "%d", &port_slaves[i]);
-        printf("Slave[%d] = %d\n", i, port_slaves[i]);
+    printf("Number of slaves: %d\n", numSlaves);
+    //set the first address as the master always
+    char *addr_master = (char *)malloc(16 * sizeof(char));
+    int port_master;
+    fscanf(config, "%s %d", addr_master, &port_master);
+    printf("Master: %s\n", addr_master);
+    //read the ip addr and port number for each slave
+    char **addr_slaves = (char **)malloc(numSlaves * sizeof(char*));
+    for(int i=0;i<numSlaves;i++)
+    {
+        addr_slaves[i] = (char *)malloc(16 * sizeof(char));
+    }
+    int *port_slaves = (int *)malloc(numSlaves * sizeof(int));
+    for (int i = 0; i < numSlaves; i++)
+    {
+        fscanf(config, "%s %d",addr_slaves[i], &port_slaves[i]);
+    }
+    printf("address and port of slaves:\n");
+    for (int i = 0; i < numSlaves; i++)
+    {
+        printf("Slave %d: %s %d\n",i,addr_slaves[i],port_slaves[i]);
     }
 
     //check if the status is master or slave
@@ -257,8 +276,6 @@ int main(){
             }
             // printf("\n");
         }
-        // r will hold the coefficients
-        int *r = (int *)malloc(n * sizeof(int));
         //master
         //divide the submatrices
         int ***submatrices = divide_matrix(X, n, n, numSlaves);
@@ -293,7 +310,9 @@ int main(){
         int slaveNum;
         printf("Enter the slave number of this instance: ");
         scanf("%d", &slaveNum);
-        printf("Slave %d's port: %d\n", slaveNum, port_slaves[slaveNum]);
+        char *slave_address = (char *)malloc(16 * sizeof(char));
+        strcpy(slave_address, addr_slaves[slaveNum]);
+        printf("Slave %d's address & port: %s %d\n", slaveNum, slave_address, port_slaves[slaveNum]);
         //socket details declaration
         int socket_desc, client_sock, client_size;
         struct sockaddr_in server_addr, client_addr;
