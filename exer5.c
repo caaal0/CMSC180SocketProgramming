@@ -20,6 +20,7 @@ struct thread_args
     int cols;
     int port;
     char *master_address;
+    char *slave_address;
     int starting_index;
     double *result;
 };
@@ -135,6 +136,7 @@ void *sendMatrix(void *args){
     double *result = my_data->result;
     int starting_index = my_data->starting_index;
     char *master_address = my_data->master_address;
+    char *slave_address = my_data->slave_address;
     //open port p, distribute the submatrices to slaves
     int socket_desc;
     struct sockaddr_in server_addr;
@@ -156,7 +158,7 @@ void *sendMatrix(void *args){
     // Set port and IP the same as server-side:
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
-    server_addr.sin_addr.s_addr = inet_addr(master_address);
+    server_addr.sin_addr.s_addr = inet_addr(slave_address);
     
     // Send a connection request to the server, which is waiting at accept():
     if(connect(socket_desc, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0){
@@ -238,20 +240,29 @@ int main(){
     printf("Enter status of this instance (0 = master, 1 = slave): ");
     scanf("%d", &s);
 
-    FILE *config = fopen("config.txt", "r");
+    //then the number of slave ports (for same pc instances)
+    FILE *config = fopen("sagun_config.txt", "r");
+    int numSlaves;
+    fscanf(config, "%d", &numSlaves);
+
+    char ** ip_slaves = (char **)malloc(numSlaves * sizeof(char*));
+
     //the first address is always the master
     char *addr_master = (char *)malloc(16 * sizeof(char));
-    fscanf(config, "%s", addr_master);
+    int port_master;
+    for(int i = 0; i<numSlaves;i++){
+        ip_slaves[i] = (char *)malloc(16 * sizeof(char));
+    }
+    fscanf(config, "%s %d", addr_master, &port_master);
     printf("Master: %s\n", addr_master);
-    int numSlaves;
-    //then the number of slave ports (for same pc instances)
-    fscanf(config, "%d", &numSlaves);
     //then the ports themselves
     int port_slaves[numSlaves];
     for(int i = 0; i<numSlaves;i++){
-        fscanf(config, "%d", &port_slaves[i]);
-        printf("Slave[%d] = %d\n", i, port_slaves[i]);
+        fscanf(config, "%s %d", ip_slaves[i], &port_slaves[i]);
+        printf("Slave[%d] = %s %d\n", i, ip_slaves[i], port_slaves[i]);
     }
+
+    return 0;
 
     //check if the status is master or slave
     if(s == 0){
@@ -320,6 +331,7 @@ int main(){
             args->cols = n/numSlaves;
             args->port = port_slaves[i];
             args->master_address = addr_master;
+            args->slave_address = ip_slaves[i];
             args->starting_index = i * (n/numSlaves);
             args->result = result;
             //create the thread
@@ -371,7 +383,7 @@ int main(){
         // Initialize the server address by the port and IP:
         server_addr.sin_family = AF_INET;
         server_addr.sin_port = htons(port_slaves[slaveNum]);
-        server_addr.sin_addr.s_addr = inet_addr(addr_master);
+        server_addr.sin_addr.s_addr = inet_addr(ip_slaves[slaveNum]);
         
         // Bind the socket descriptor to the server address (the port and IP):
         if(bind(socket_desc, (struct sockaddr*)&server_addr, sizeof(server_addr))<0){
