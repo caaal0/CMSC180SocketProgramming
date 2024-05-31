@@ -262,7 +262,7 @@ int main(){
         printf("Slave[%d] = %s %d\n", i, ip_slaves[i], port_slaves[i]);
     }
 
-    return 0;
+    // return 0;
 
     //check if the status is master or slave
     if(s == 0){
@@ -322,6 +322,7 @@ int main(){
         srand(time(NULL));
         clock_t start = clock();
         //make a thread for each slave
+        int starting_index = 0;
         for(int i = 0; i < numSlaves;i++)
         {
             struct thread_args *args = (struct thread_args *)malloc(sizeof(struct thread_args));
@@ -329,13 +330,17 @@ int main(){
             args->y = height;
             args->rows = n;
             args->cols = n/numSlaves;
+            if(n < numSlaves && i < n){
+                args->cols = 1;
+            }
             args->port = port_slaves[i];
             args->master_address = addr_master;
             args->slave_address = ip_slaves[i];
-            args->starting_index = i * (n/numSlaves);
+            args->starting_index = starting_index;
             args->result = result;
             //create the thread
             pthread_create(&tid[i], NULL, sendMatrix, args);
+            starting_index+=args->cols;
         }
         //join the threads
         for(int i = 0; i < numSlaves;i++)
